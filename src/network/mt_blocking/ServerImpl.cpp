@@ -84,8 +84,8 @@ void ServerImpl::Stop() {
 
 // See Server.h
 void ServerImpl::Join() {
-    assert(_thread.joinable());
-    _thread.join();
+    assert(_thread.joinable()); // что-то про Clockdown Latch
+    _thread.join();             // 
     close(_server_socket);
 }
 
@@ -100,7 +100,7 @@ void ServerImpl::OnRun() {
     Protocol::Parser parser;
     std::string argument_for_command;
     std::unique_ptr<Execute::Command> command_to_execute;
-    while (running.load()) {
+    while (running.load()) { // become false
         _logger->debug("waiting for connection...");
 
         // The call to accept() blocks until the incoming connection arrives
@@ -108,8 +108,8 @@ void ServerImpl::OnRun() {
         struct sockaddr client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         if ((client_socket = accept(_server_socket, (struct sockaddr *)&client_addr, &client_addr_len)) == -1) {
-            continue;
-        }
+            continue; // thread waits till time coming
+        }  // внутренниий цикл так, чтобы выходить только после выполнения команды.
 
         // Got new connection
         if (_logger->should_log(spdlog::level::debug)) {
@@ -133,7 +133,7 @@ void ServerImpl::OnRun() {
         }
 
         // TODO: Start new thread and process data from/to connection
-        {
+        { // новый тред, бла-бла, копипаст из st_blocking/ServerImpl.cpp
             static const std::string msg = "TODO: start new thread and process memcached protocol instead";
             if (send(client_socket, msg.data(), msg.size(), 0) <= 0) {
                 _logger->error("Failed to write response to client: {}", strerror(errno));

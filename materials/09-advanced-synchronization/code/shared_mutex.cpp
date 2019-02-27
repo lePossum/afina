@@ -8,7 +8,7 @@ void shared_mutex::lock() {
     std::unique_lock<std::mutex> lk(mut_);
     while (state_ & write_entered_)
         gate1_.wait(lk);
-    state_ |= write_entered_;
+    state_ |= write_entered_; // for non-coming new readers
     while (state_ & n_readers_)
         gate2_.wait(lk);
 }
@@ -37,7 +37,7 @@ void shared_mutex::lock_shared() {
     std::unique_lock<std::mutex> lk(mut_);
     while ((state_ & write_entered_) || (state_ & n_readers_) == n_readers_)
         gate1_.wait(lk);
-    unsigned num_readers = (state_ & n_readers_) + 1;
+    unsigned num_readers = (state_ & n_readers_) + 1; // HW
     state_ &= ~n_readers_;
     state_ |= num_readers;
 }
