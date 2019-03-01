@@ -53,7 +53,7 @@ class Executor {
         std::unique_lock<std::mutex> lock(this->mutex);
         if (state != State::kRun) {
             return false;
-        }
+        } //
 
         // Enqueue new task
         tasks.push_back(exec);
