@@ -20,7 +20,10 @@ public:
     // TOASK: что с членами класса, которые я не инициализирую явно?
     // Без явной инициализации в _cur_size и _lru_tail был мусор
     // Как понять, что следует явно инициализировать?
-    SimpleLRU(size_t max_size = 1024) : _max_size(max_size), _cur_size(0), _lru_head(nullptr), _lru_tail(nullptr) {}
+    SimpleLRU(size_t max_size = 1024) : _max_size(max_size),
+                                        _cur_size(0),
+                                        _lru_head(nullptr),
+                                        _lru_tail(nullptr) {}
 
     ~SimpleLRU() {
         _lru_index.clear();
@@ -31,7 +34,7 @@ public:
                 _lru_head.swap(tmp);
                 tmp.reset();
             }
-            _lru_head.reset(); // TODO: here was stack overflow. Should I file pull request?
+            _lru_head.reset();
         }
     }
 
@@ -48,14 +51,12 @@ public:
     bool Delete(const std::string &key) override;
 
     // Implements Afina::Storage interface
-    // Get is no longer const, since according to LRU logic, the element's
-    // position has to be refreshed on each Get
     bool Get(const std::string &key, std::string &value) override;
 
 private:
     // LRU cache node
     using lru_node = struct lru_node {
-        std::string key;
+        const std::string key;
         std::string value;
         // std::unique_ptr<lru_node> prev;
         lru_node *prev;
@@ -77,33 +78,25 @@ private:
     // Index of nodes from list above, allows fast random access to elements by lru_node#key
     std::map<std::reference_wrapper<const std::string>,
              std::reference_wrapper<lru_node>,
-             std::less<std::string>>
-        _lru_index;
+             std::less<std::string>> _lru_index;
 
-    // Delete node by it's _lru_index iterator
-    bool DeleteItImpl(std::map<std::reference_wrapper<const std::string>,
+    // Delete node by it's iterator in _lru_index
+    bool _delete_at_iter(std::map<std::reference_wrapper<const std::string>,
                                std::reference_wrapper<lru_node>,
-                               std::less<std::string>>::iterator
-                          todel_it);
+                               std::less<std::string>>::iterator elem_iter);
 
-    // Delete node by it's reference
-    bool DeleteRefImpl(lru_node &todel_ref);
+    bool _delete_node(lru_node &node_ref);
 
-    // Refresh node by it's iterator in _lru_index
-    bool RefreshImp(lru_node &torefresh_ref);
+    bool _node_to_tail(lru_node &node_ref);
 
-    // Remove LRU-nodes until we get as much as needfree free space
-    bool GetFreeImpl(size_t needfree);
+    bool _is_free(size_t need_to_free);
 
-    // Put a new element w/o checking for it's existence (this check MUST be performed before calling this method)
-    bool PutImpl(const std::string &key, const std::string &value);
+    bool _put(const std::string &key, const std::string &value);
 
-    // Set element value by _lru_index iterator
-    bool SetImpl(std::map<std::reference_wrapper<const std::string>,
+    bool _set(std::map<std::reference_wrapper<const std::string>,
                           std::reference_wrapper<lru_node>,
-                          std::less<std::string>>::iterator
-                    toset_it,
-                 const std::string &value);
+                          std::less<std::string>>::iterator elem_iter,
+              const std::string &value);
 };
 
 } // namespace Backend
