@@ -137,16 +137,17 @@ void ServerImpl::OnRun() {
         worker = _free_worker();
         if (worker == -1) {
             close(client_socket); // cv here
-            _logger->debug("No free workers to process this connection");
+            _logger->debug("All possible threads are busy");
             continue;
         }
-        _logger->debug("Worker {} assigned to this task", worker);
-        _workers_mutex.lock();
-        if (_w_vector[worker]._w_thread.joinable()) {
-            _w_vector[worker]._w_thread.join();
+        {
+            std::lock_guard<std::mutex> _lock(_workers_mutex);
+            if (_w_vector[worker]._w_thread.joinable()) {
+                _w_vector[worker]._w_thread.join();
+            }
+            _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker, client_socket);
         }
-        _w_vector[worker]._w_thread = std::thread(&ServerImpl::Work, this, worker, client_socket);
-        _workers_mutex.unlock();
+        _logger->debug("Thread started");
     }
     // Cleanup on exit...
     _logger->warn("Network stopped");
@@ -155,7 +156,7 @@ void ServerImpl::OnRun() {
 int64_t ServerImpl::_free_worker() {
     std::lock_guard<std::mutex> _lock(_workers_mutex);
     for (uint32_t i = 0; i < _workers_amount; ++i) {
-        if (_w_vector[i]._is_busy == false) {
+        if (!_w_vector[i]._is_busy) {
             _w_vector[i]._is_busy = true;
             return i;
         }
@@ -164,7 +165,7 @@ int64_t ServerImpl::_free_worker() {
 }
 
 // Function for worker
-void ServerImpl::Work(uint32_t number, int client_socket) {
+void ServerImpl::_func(uint32_t number, int client_socket) {
     // Here is connection state
     // - parser: parse state of the stream
     // - command_to_execute: last command parsed out of stream
@@ -239,12 +240,13 @@ void ServerImpl::Work(uint32_t number, int client_socket) {
                         throw std::runtime_error("Failed to send response");
                     }
 
-                    // Has server itself stopped?
-                    if (running == false) {
+                    // If server already stopped
+                    if (running.load() == false) {
                         close(client_socket);
-                        _workers_mutex.lock();
-                        _w_vector[number]._is_busy = false;
-                        _workers_mutex.unlock();
+                        {
+                            std::lock_guard<std::mutex> _lock(_workers_mutex);
+                            _w_vector[number]._is_busy = false;
+                        }
                         return;
                     }
 
@@ -264,11 +266,11 @@ void ServerImpl::Work(uint32_t number, int client_socket) {
         _logger->error("Failed to process connection on descriptor {}: {}", client_socket, ex.what());
     }
 
-    // We are done with this connection
     close(client_socket);
-    _workers_mutex.lock();
-    _w_vector[number]._is_busy = false;
-    _workers_mutex.unlock();
+    {
+        std::lock_guard<std::mutex> _lock(_workers_mutex);
+        _w_vector[number]._is_busy = false;
+    }
 }
 
 } // namespace MTblocking

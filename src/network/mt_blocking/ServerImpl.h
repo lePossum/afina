@@ -39,7 +39,7 @@ protected:
      * Method is running in the connection acceptor thread
      */
     void OnRun();
-    void Work(uint32_t number, int client_socket);
+    void _func(uint32_t number, int client_socket);
 
 private:
     // Logger instance
