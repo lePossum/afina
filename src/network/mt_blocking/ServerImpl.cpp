@@ -160,7 +160,6 @@ int64_t ServerImpl::_free_worker() {
             _w_vector[i]._is_busy = true;
             return i;
         }
-    }
     return -1;
 }
 
