@@ -2,9 +2,7 @@
 #define AFINA_NETWORK_MT_BLOCKING_SERVER_H
 
 #include <atomic>
-#include <mutex>
 #include <thread>
-#include <vector>
 
 #include <afina/network/Server.h>
 
@@ -39,14 +37,13 @@ protected:
      * Method is running in the connection acceptor thread
      */
     void OnRun();
-    void _func(uint32_t number, int client_socket);
 
 private:
     // Logger instance
     std::shared_ptr<spdlog::logger> _logger;
 
     // Atomic flag to notify threads when it is time to stop. Note that
-    // flag must be atomic in order to safely publish changes cross thread
+    // flag must be atomic in order to safely publisj changes cross thread
     // bounds
     std::atomic<bool> running;
 
@@ -55,21 +52,6 @@ private:
 
     // Thread to run network on
     std::thread _thread;
-
-    // Max amount of threads
-    uint32_t _workers_amount = 1;
-    std::mutex _workers_mutex;
-
-    struct Worker {
-        std::thread _w_thread;
-        bool _is_busy;
-
-        Worker() : _w_thread(), _is_busy(false) {}
-    };
-
-    std::vector<Worker> _w_vector;
-
-    int64_t _free_worker();
 };
 
 } // namespace MTblocking
@@ -77,3 +59,4 @@ private:
 } // namespace Afina
 
 #endif // AFINA_NETWORK_MT_BLOCKING_SERVER_H
+
