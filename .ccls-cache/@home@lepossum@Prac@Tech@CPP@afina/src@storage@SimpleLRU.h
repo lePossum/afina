@@ -11,15 +11,13 @@
 namespace Afina {
 namespace Backend {
 
-/**
+/*
  * # Map based implementation
  * That is NOT thread safe implementaiton!!
  */
 class SimpleLRU : public Afina::Storage {
 public:
-    // TOASK: что с членами класса, которые я не инициализирую явно?
-    // Без явной инициализации в _cur_size и _lru_tail был мусор
-    // Как понять, что следует явно инициализировать?
+
     SimpleLRU(size_t max_size = 1024) : _max_size(max_size),
                                         _cur_size(0),
                                         _lru_head(nullptr),
@@ -75,15 +73,17 @@ private:
     std::unique_ptr<lru_node> _lru_head;
     lru_node *_lru_tail;
 
-    // Index of nodes from list above, allows fast random access to elements by lru_node#key
-    std::map<std::reference_wrapper<const std::string>,
+    using back_node = std::map<std::reference_wrapper<const std::string>,
              std::reference_wrapper<lru_node>,
-             std::less<std::string>> _lru_index;
+             std::less<std::string>>;
+
+    // Index of nodes from list above, allows fast random access to elements by lru_node#key
+    back_node _lru_index;
+
+    using back_node_iter = back_node::iterator;
 
     // Delete node by it's iterator in _lru_index
-    bool _delete_at_iter(std::map<std::reference_wrapper<const std::string>,
-                               std::reference_wrapper<lru_node>,
-                               std::less<std::string>>::iterator elem_iter);
+    bool _delete_at_iter(back_node_iter elem_iter);
 
     bool _delete_node(lru_node &node_ref);
 
@@ -93,10 +93,7 @@ private:
 
     bool _put(const std::string &key, const std::string &value);
 
-    bool _set(std::map<std::reference_wrapper<const std::string>,
-                          std::reference_wrapper<lru_node>,
-                          std::less<std::string>>::iterator elem_iter,
-              const std::string &value);
+    bool _set(back_node_iter elem_iter, const std::string &value);
 };
 
 } // namespace Backend

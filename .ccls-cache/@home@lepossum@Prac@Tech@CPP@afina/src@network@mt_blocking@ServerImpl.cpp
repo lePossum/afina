@@ -28,9 +28,7 @@ namespace Network {
 namespace MTblocking {
 
 // See Server.h
-ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps,
-                       std::shared_ptr<Logging::Service> pl) :
-                            Server(ps, pl) { }
+ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps, std::shared_ptr<Logging::Service> pl) : Server(ps, pl) {}
 
 // See Server.h
 ServerImpl::~ServerImpl() {}
@@ -107,8 +105,8 @@ void ServerImpl::OnRun() {
         struct sockaddr client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         if ((client_socket = accept(_server_socket, (struct sockaddr *)&client_addr, &client_addr_len)) == -1) {
-            continue; // thread waits till time coming
-        }  // внутренниий цикл так, чтобы выходить только после выполнения команды.
+            continue;
+        }
 
         // Got new connection
         if (_logger->should_log(spdlog::level::debug)) {
@@ -146,6 +144,7 @@ void ServerImpl::OnRun() {
                 _w_vector[worker]._w_thread.join();
             }
             _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker, client_socket);
+            // _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker);
         }
         _logger->debug("Thread started");
     }
@@ -160,7 +159,8 @@ int64_t ServerImpl::_free_worker() {
             _w_vector[i]._is_busy = true;
             return i;
         }
-    return -1;
+        return -1;
+    }
 }
 
 // Function for worker
@@ -178,11 +178,6 @@ void ServerImpl::_func(uint32_t number, int client_socket) {
     try {
         int readed_bytes = -1;
         char client_buffer[4096];
-        // TODO: в st_block после завершения работы сервера уже
-        // подключённый пользователь может продолжать слать ещё команды, как я понял.
-        // в моём варианте mt_block при завершении работы сервера корректно
-        // довыполняется текущая команда, после чего соединение клиента
-        // закрываем
         while ((readed_bytes = read(client_socket, client_buffer, sizeof(client_buffer))) > 0) {
             _logger->debug("Got {} bytes from socket", readed_bytes);
 

@@ -144,6 +144,7 @@ void ServerImpl::OnRun() {
                 _w_vector[worker]._w_thread.join();
             }
             _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker, client_socket);
+            // _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker);
         }
         _logger->debug("Thread started");
     }

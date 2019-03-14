@@ -58,9 +58,9 @@ void ServerImpl::Start(uint16_t port, uint32_t n_accept, uint32_t n_workers) {
     //
     // Note we need to convert the port to network order
     struct sockaddr_in server_addr;
-    std::memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;         // IPv4
-    server_addr.sin_port = htons(port);       // TCP port number
+    std::memset(&server_addr, 0, sizeof(server_addr)); // "обнуление мусора"
+    server_addr.sin_family = AF_INET;         // IPv4, sin = Soutce INput
+    server_addr.sin_port = htons(port);       // TCP port number // little ending to big ending
     server_addr.sin_addr.s_addr = INADDR_ANY; // Bind to any address
 
     // Arguments are:
@@ -96,7 +96,7 @@ void ServerImpl::Start(uint16_t port, uint32_t n_accept, uint32_t n_workers) {
     // connections that we'll allow to queue up. Note that listen() doesn't block until
     // incoming connections arrive. It just makesthe OS aware that this process is willing
     // to accept connections on this socket (which is bound to a specific IP and port)
-    if (listen(_server_socket, 5) == -1) {
+    if (listen(_server_socket, 5) == -1) { // 5 == max amount of connections
         close(_server_socket);
         throw std::runtime_error("Socket listen() failed");
     }
@@ -135,7 +135,7 @@ void ServerImpl::OnRun() {
         // The call to accept() blocks until the incoming connection arrives
         int client_socket;
         struct sockaddr client_addr;
-        socklen_t client_addr_len = sizeof(client_addr);
+        socklen_t client_addr_len = sizeof(client_addr);// accept заблокирована, пока очередь соединений не пуста
         if ((client_socket = accept(_server_socket, (struct sockaddr *)&client_addr, &client_addr_len)) == -1) {
             continue;
         }

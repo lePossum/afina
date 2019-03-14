@@ -2,8 +2,8 @@
 #define AFINA_NETWORK_MT_BLOCKING_SERVER_H
 
 #include <atomic>
-#include <thread>
 #include <mutex>
+#include <thread>
 #include <vector>
 
 #include <afina/network/Server.h>
@@ -64,8 +64,7 @@ private:
         std::thread _w_thread;
         bool _is_busy;
 
-        Worker () : _w_thread(),
-                    _is_busy(false) { }
+        Worker() : _w_thread(), _is_busy(false) {}
     };
 
     std::vector<Worker> _w_vector;

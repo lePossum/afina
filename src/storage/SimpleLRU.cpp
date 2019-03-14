@@ -55,9 +55,7 @@ bool SimpleLRU::Get(const std::string &key, std::string &value)
     }
 }
 
-bool SimpleLRU::_delete_at_iter(std::map<std::reference_wrapper<const std::string>,
-                                         std::reference_wrapper<lru_node>,
-                                         std::less<std::string>>::iterator elem_iter)
+bool SimpleLRU::_delete_at_iter(back_node_iter elem_iter)
 {
     std::unique_ptr<lru_node> tmp;
     lru_node &node = elem_iter->second;
@@ -150,10 +148,7 @@ bool SimpleLRU::_put(const std::string &key, const std::string &value)
 }
 
 // Set element value by _lru_index iterator
-bool SimpleLRU::_set(std::map<std::reference_wrapper<const std::string>,
-                              std::reference_wrapper<lru_node>,
-                              std::less<std::string>>::iterator elem_iter,
-                     const std::string &value)
+bool SimpleLRU::_set(back_node_iter elem_iter, const std::string &value)
 {
     lru_node &elem_node = elem_iter->second;
     int size_dif = value.size() - elem_node.value.size();
