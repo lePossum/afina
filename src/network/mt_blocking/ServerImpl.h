@@ -5,6 +5,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include <map>
 
 #include <afina/network/Server.h>
 
@@ -60,7 +61,7 @@ private:
     std::mutex _workers_mutex;
 
     void _func(int client_socket);
-    int64_t _cur_workers_amount = 0;
+    std::map<int, std::thread> _workers;
     std::condition_variable _cv;
 };
 

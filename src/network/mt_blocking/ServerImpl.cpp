@@ -86,6 +86,11 @@ void ServerImpl::Stop() {
 
 // See Server.h
 void ServerImpl::Join() {
+    std::unique_lock<std::mutex> _lock(_workers_mutex);
+    while (!_workers.empty()) {
+        _cv.wait(_lock);
+    }
+
     assert(_thread.joinable()); // что-то про Clockdown Latch
     _thread.join();
     close(_server_socket);
@@ -130,27 +135,20 @@ void ServerImpl::OnRun() {
 
         {
             std::lock_guard<std::mutex> _lock (_workers_mutex);
-            if (_cur_workers_amount >= _workers_amount) {
-                // static const std::string msg = "Achieved max number of workers";
-                // if (send(client_socket, msg.data(), msg.size(), 0) <= 0) {
-                //     _logger->error("Failed to write response to client: {}", strerror(errno));
-                // }
+            if (_workers.size() >= _workers_amount) {
                 _logger->debug("All possible threads are busy");
                 close(client_socket);
             } else {
-                _workers_amount++;
-                std::thread temp_thread(&ServerImpl::_func, this, client_socket);
-                temp_thread.detach();
+                _workers.insert(std::pair<int, std::thread>
+                                (client_socket, std::thread([this, client_socket]
+                                {
+                                    _func(client_socket);
+                                })));
             }
-
-}
+        }
         _logger->debug("Thread started");
     }
 
-    {
-       std::unique_lock<std::mutex> _lock (_workers_mutex);
-       _cv.wait(_lock, [this] () { return _cur_workers_amount == 0; });
-    }
     // Cleanup on exit...
     _logger->warn("Network stopped");
 }
@@ -214,7 +212,7 @@ void ServerImpl::_func(int client_socket) {
                     readed_bytes -= to_read;
                 }
 
-                // Thre is command & argument - RUN!
+                // There is command & argument - RUN!
                 if (command_to_execute && arg_remains == 0) {
                     _logger->debug("Start command execution");
 
@@ -246,9 +244,10 @@ void ServerImpl::_func(int client_socket) {
 
     {
         std::lock_guard<std::mutex> _lock(_workers_mutex);
-        _cur_workers_amount--;
-        if (!_workers_amount && !running.load())
-            _cv.notify_all();
+        _workers[client_socket].detach();
+        _workers.erase(client_socket);
+        if (_workers.size() == 0)
+            _cv.notify_one();
     }
 }
 
