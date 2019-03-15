@@ -4,7 +4,7 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
-#include <vector>
+#include <condition_variable>
 
 #include <afina/network/Server.h>
 
@@ -39,7 +39,6 @@ protected:
      * Method is running in the connection acceptor thread
      */
     void OnRun();
-    void _func(uint32_t number, int client_socket);
 
 private:
     // Logger instance
@@ -60,16 +59,9 @@ private:
     uint32_t _workers_amount = 1;
     std::mutex _workers_mutex;
 
-    struct Worker {
-        std::thread _w_thread;
-        bool _is_busy;
-
-        Worker() : _w_thread(), _is_busy(false) {}
-    };
-
-    std::vector<Worker> _w_vector;
-
-    int64_t _free_worker();
+    void _func(int client_socket);
+    int64_t _cur_workers_amount = 0;
+    std::condition_variable _cv;
 };
 
 } // namespace MTblocking

@@ -36,7 +36,6 @@ ServerImpl::~ServerImpl() {}
 // See Server.h
 void ServerImpl::Start(uint16_t port, uint32_t n_accept, uint32_t n_workers) {
     _workers_amount = n_workers;
-    _w_vector = std::vector<Worker>(_workers_amount);
     _logger = pLogging->select("network");
     _logger->info("Start mt_blocking network service");
 
@@ -89,9 +88,6 @@ void ServerImpl::Stop() {
 void ServerImpl::Join() {
     assert(_thread.joinable()); // что-то про Clockdown Latch
     _thread.join();
-    for (uint32_t i = 0; i < _workers_amount; ++i)
-        if (_w_vector[i]._w_thread.joinable())
-            _w_vector[i]._w_thread.join();
     close(_server_socket);
 }
 
@@ -131,40 +127,36 @@ void ServerImpl::OnRun() {
 
         // TODO: Start new thread and process data from/to connection
         // новый тред, бла-бла, копипаст из st_blocking/ServerImpl.cpp
-        int64_t worker;
-        worker = _free_worker();
-        if (worker == -1) {
-            close(client_socket); // cv here
-            _logger->debug("All possible threads are busy");
-            continue;
-        }
+
         {
-            std::lock_guard<std::mutex> _lock(_workers_mutex);
-            if (_w_vector[worker]._w_thread.joinable()) {
-                _w_vector[worker]._w_thread.join();
+            std::lock_guard<std::mutex> _lock (_workers_mutex);
+            if (_cur_workers_amount >= _workers_amount) {
+                // static const std::string msg = "Achieved max number of workers";
+                // if (send(client_socket, msg.data(), msg.size(), 0) <= 0) {
+                //     _logger->error("Failed to write response to client: {}", strerror(errno));
+                // }
+                _logger->debug("All possible threads are busy");
+                close(client_socket);
+            } else {
+                _workers_amount++;
+                std::thread temp_thread(&ServerImpl::_func, this, client_socket);
+                temp_thread.detach();
             }
-            _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker, client_socket);
-            // _w_vector[worker]._w_thread = std::thread(&ServerImpl::_func, this, worker);
-        }
+
+}
         _logger->debug("Thread started");
+    }
+
+    {
+       std::unique_lock<std::mutex> _lock (_workers_mutex);
+       _cv.wait(_lock, [this] () { return _cur_workers_amount == 0; });
     }
     // Cleanup on exit...
     _logger->warn("Network stopped");
 }
 
-int64_t ServerImpl::_free_worker() {
-    std::lock_guard<std::mutex> _lock(_workers_mutex);
-    for (uint32_t i = 0; i < _workers_amount; ++i) {
-        if (!_w_vector[i]._is_busy) {
-            _w_vector[i]._is_busy = true;
-            return i;
-        }
-        return -1;
-    }
-}
-
 // Function for worker
-void ServerImpl::_func(uint32_t number, int client_socket) {
+void ServerImpl::_func(int client_socket) {
     // Here is connection state
     // - parser: parse state of the stream
     // - command_to_execute: last command parsed out of stream
@@ -234,16 +226,6 @@ void ServerImpl::_func(uint32_t number, int client_socket) {
                         throw std::runtime_error("Failed to send response");
                     }
 
-                    // If server already stopped
-                    if (running.load() == false) {
-                        close(client_socket);
-                        {
-                            std::lock_guard<std::mutex> _lock(_workers_mutex);
-                            _w_vector[number]._is_busy = false;
-                        }
-                        return;
-                    }
-
                     // Prepare for the next command
                     command_to_execute.reset();
                     argument_for_command.resize(0);
@@ -261,9 +243,12 @@ void ServerImpl::_func(uint32_t number, int client_socket) {
     }
 
     close(client_socket);
+
     {
         std::lock_guard<std::mutex> _lock(_workers_mutex);
-        _w_vector[number]._is_busy = false;
+        _cur_workers_amount--;
+        if (!_workers_amount && !running.load())
+            _cv.notify_all();
     }
 }
 
