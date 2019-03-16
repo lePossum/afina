@@ -64,7 +64,7 @@ bool SimpleLRU::_delete_at_iter(back_node_iter elem_iter)
     // deleting from interface
     _lru_index.erase(elem_iter);
 
-    // deleting from main list
+    // deleting from list
     if (node.next) {
         node.next->prev = node.prev;
     }
@@ -132,7 +132,7 @@ bool SimpleLRU::_put(const std::string &key, const std::string &value)
     if (!_is_free(addsize)) {
         return false;
     }
-    std::unique_ptr<lru_node> temp_ptr{new lru_node{key, value}};
+    std::unique_ptr<lru_node> temp_ptr(new lru_node(key, value));
     if (_lru_tail != nullptr) {
         temp_ptr->prev = _lru_tail;
         _lru_tail->next.swap(temp_ptr);

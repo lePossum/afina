@@ -56,9 +56,11 @@ private:
     using lru_node = struct lru_node {
         const std::string key;
         std::string value;
-        // std::unique_ptr<lru_node> prev;
         lru_node *prev;
         std::unique_ptr<lru_node> next;
+
+        lru_node(const std::string& _k, const std::string& _v) :
+            key(_k), value(_v), prev(nullptr), next(nullptr) { }
     };
 
     // Maximum number of bytes could be stored in this cache.
@@ -68,7 +70,7 @@ private:
 
     // Main storage of lru_nodes, elements in this list ordered descending by "freshness": in the head
     // element that wasn't used for longest time.
-    //
+
     // List owns all nodes
     std::unique_ptr<lru_node> _lru_head;
     lru_node *_lru_tail;
