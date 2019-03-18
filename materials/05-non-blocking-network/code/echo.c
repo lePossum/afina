@@ -52,7 +52,7 @@ void *handle(void *ptr) {
     } else if (EPOLLOUT == echoEvent->event) {
         int ret;
         ret = write(echoEvent->fd, (echoEvent->data) + (echoEvent->offset), echoEvent->length);
-
+        // выше должно быть вместо (length) (length - offset) или нет...
         if ((-1 == ret && EINTR == errno) || ret < echoEvent->length) {
             /*
              * We either got EINTR or write only sent partial data.
@@ -70,12 +70,12 @@ void *handle(void *ptr) {
             }
 
         } else if (-1 == ret) {
-            /*
+           /*
             * Some other error occured.
             */ close(echoEvent->fd);
             free(echoEvent);
         } else {
-            /*
+          /*
            * The entire data was written. Add an read event,
            * to read more data from the socket.
            */ printf("\nAdding Read Event.\n");
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
     /*
      * Create read event for server socket.
-     */
+     */ // nonblocking call (possible to call many times in one moment):
     modifyEpollContext(epollfd, EPOLL_CTL_ADD, serverfd, EPOLLIN, &serverfd);
 
     /*
