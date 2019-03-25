@@ -6,6 +6,7 @@
 #include <thread>
 #include <condition_variable>
 #include <map>
+#include <unordered_set>
 
 #include <afina/network/Server.h>
 
@@ -63,6 +64,7 @@ private:
     void _func(int client_socket);
     std::map<int, std::thread> _workers;
     std::condition_variable _cv;
+    std::unordered_set<int> _sockets_nums;
 };
 
 } // namespace MTblocking

@@ -81,6 +81,8 @@ void ServerImpl::Start(uint16_t port, uint32_t n_accept, uint32_t n_workers) {
 // See Server.h
 void ServerImpl::Stop() {
     running.store(false);
+    for (int i : _sockets_nums)
+        shutdown(i, SHUT_RD);
     shutdown(_server_socket, SHUT_RDWR);
 }
 
@@ -144,6 +146,7 @@ void ServerImpl::OnRun() {
                                 {
                                     _func(client_socket);
                                 })));
+                _sockets_nums.insert(client_socket);
             }
         }
         _logger->debug("Thread started");

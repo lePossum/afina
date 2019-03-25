@@ -60,8 +60,6 @@ namespace Concurrency {
         state = State::kStopped;
     }
 
-
-
     void Executor::_add_thread() {
         threads.push_back(std::thread(&perform, this));
     }
