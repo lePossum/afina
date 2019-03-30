@@ -56,6 +56,8 @@ private:
 
     // IO thread
     std::thread _work_thread;
+
+    std::set<Connection *> _conns;
 };
 
 } // namespace STnonblock

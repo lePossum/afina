@@ -64,7 +64,7 @@ void ServerImpl::Start(uint16_t port, uint32_t n_acceptors, uint32_t n_workers) 
         throw std::runtime_error("Socket setsockopt() failed: " + std::string(strerror(errno)));
     }
 
-    if (bind(_server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+    if (bind(_server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
         close(_server_socket);
         throw std::runtime_error("Socket bind() failed: " + std::string(strerror(errno)));
     }
@@ -91,6 +91,11 @@ void ServerImpl::Stop() {
     if (eventfd_write(_event_fd, 1)) {
         throw std::runtime_error("Failed to wakeup workers");
     }
+    for (auto pc : _conns) {
+        close(pc->_socket);
+        delete pc;
+    }
+    _conns.clear();
 }
 
 // See Server.h
@@ -169,11 +174,6 @@ void ServerImpl::OnRun() {
             } else if (pc->_event.events != old_mask) {
                 if (epoll_ctl(epoll_descr, EPOLL_CTL_MOD, pc->_socket, &pc->_event)) {
                     _logger->error("Failed to change connection event mask");
-
-                    close(pc->_socket);
-                    pc->OnClose();
-
-                    delete pc;
                 }
             }
         }
@@ -213,10 +213,12 @@ void ServerImpl::OnNewConnection(int epoll_descr) {
         }
 
         // Register connection in worker's epoll
-        pc->Start();
+        pc->Start(_logger);
         if (pc->isAlive()) {
             if (epoll_ctl(epoll_descr, EPOLL_CTL_ADD, pc->_socket, &pc->_event)) {
                 pc->OnError();
+                close(pc->_socket);
+                _conns.erase(pc);
                 delete pc;
             }
         }
