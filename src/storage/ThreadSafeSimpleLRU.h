@@ -16,7 +16,7 @@ namespace Backend {
  *
  *
  */
-    class ThreadSafeSimplLRU : public SimpleLRU {
+class ThreadSafeSimplLRU : public SimpleLRU {
     public:
         ThreadSafeSimplLRU(size_t max_size = 1024)
             : SimpleLRU(max_size)

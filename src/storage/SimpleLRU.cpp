@@ -152,13 +152,14 @@ bool SimpleLRU::_set(back_node_iter elem_iter, const std::string &value)
 {
     lru_node &elem_node = elem_iter->second;
     int size_dif = value.size() - elem_node.value.size();
+    bool ret_b = _node_to_tail(elem_node);
     if (size_dif > 0)
         if (!_is_free(size_dif))
             return false;
 
     elem_node.value = value;
     _cur_size += size_dif;
-    return _node_to_tail(elem_node);
+    return ret_b;
 }
 
 } // namespace Backend

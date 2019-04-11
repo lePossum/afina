@@ -13,18 +13,22 @@
 #include "protocol/Parser.h"
 #include <spdlog/logger.h>
 
+namespace spdlog {
+class logger;
+}
+
 namespace Afina {
 namespace Network {
 namespace STnonblock {
 
 class Connection {
 public:
-    Connection(int s) : _socket(s) {
+    Connection(int s, std::shared_ptr<Afina::Storage> ps) : _socket(s), pStorage(ps) {
         std::memset(&_event, 0, sizeof(struct epoll_event));
-        _event.data.ptr = this;
+        _isAlive = true;
     }
 
-    inline bool isAlive() const { return _alive; }
+    inline bool isAlive() const { return _isAlive; }
 
     void Start(std::shared_ptr<spdlog::logger> logger);
 
@@ -37,14 +41,14 @@ protected:
 private:
     friend class ServerImpl;
 
-    static const int mask_r = EPOLLIN | EPOLLRDHUP | EPOLLERR;
-    static const int mask_rw = EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLOUT;
+    static const int mask_read = EPOLLIN | EPOLLRDHUP | EPOLLERR;
+    static const int mask_read_write = EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLOUT;
 
     std::shared_ptr<spdlog::logger> _logger;
     std::shared_ptr<Afina::Storage> pStorage;
 
     int _socket;
-    bool _alive; //
+    bool _isAlive;
     struct epoll_event _event;
 
     std::size_t arg_remains;
@@ -52,8 +56,9 @@ private:
     std::string argument_for_command;
     std::unique_ptr<Execute::Command> command_to_execute;
 
-    int read_bytes = 0;
+    int readed_bytes = 0;
     char client_buffer[4096];
+    char write_buffer[4096];
 
     std::vector<std::string> _answers;
     int _position = 0;

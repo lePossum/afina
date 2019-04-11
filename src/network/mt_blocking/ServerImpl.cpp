@@ -81,16 +81,17 @@ void ServerImpl::Start(uint16_t port, uint32_t n_accept, uint32_t n_workers) {
 // See Server.h
 void ServerImpl::Stop() {
     running.store(false);
-
+    {
+        for (int i : _sockets_nums) {
+            shutdown(i, SHUT_RD);
+        }
+    }
     shutdown(_server_socket, SHUT_RDWR);
 }
 
 // See Server.h
 void ServerImpl::Join() {
     std::unique_lock<std::mutex> _lock(_workers_mutex);
-    for (int i : _sockets_nums)
-        shutdown(i, SHUT_RD);
-
     while (!_workers.empty()) {
         _cv.wait(_lock);
     }
