@@ -12,7 +12,7 @@ namespace STnonblock {
 // See Connection.h
 void Connection::Start(std::shared_ptr<spdlog::logger> logger) {
     _event.events = mask_read;
-    _event.data.fd = _socket;
+    // _event.data.fd = _socket;
     _event.data.ptr = this;
     _logger = logger;
     _answers.clear();
@@ -99,13 +99,12 @@ void Connection::DoRead() {
 }
 
 void Connection::DoWrite() {
-    int amount = _answers.size();
-    if (amount <= 0) {
+    if (_answers.empty()) {
         return;
     }
 
-    struct iovec iovecs[amount];
-    for (int i = 0; i < amount; i++) {
+    struct iovec iovecs[_answers.size()];
+    for (int i = 0; i < _answers.size(); i++) {
         iovecs[i].iov_len = _answers[i].size();
         iovecs[i].iov_base = &(_answers[i][0]);
     }
@@ -121,7 +120,8 @@ void Connection::DoWrite() {
     _position += written;
 
     int i = 0;
-    for (; i < _answers.size() && (_position - iovecs[i].iov_len) >= 0; ++i) {
+    for (; i < _answers.size(); ++i) {
+        assert(_position >= iovecs[i].iov_len);
         _position -= iovecs[i].iov_len;
     }
 
