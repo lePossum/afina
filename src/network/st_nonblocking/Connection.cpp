@@ -114,7 +114,7 @@ void Connection::DoWrite() {
 
     int written;
     if ((written = writev(_socket, iovecs, _answers.size())) <= 0) {
-        OnClose();
+        OnError();
     }
     _position += written;
 
