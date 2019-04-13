@@ -7,122 +7,132 @@
 
 namespace Afina {
 namespace Network {
-namespace STnonblock {
+    namespace STnonblock {
 
-// See Connection.h
-void Connection::Start(std::shared_ptr<spdlog::logger> logger) {
-    _event.events = mask_read;
-    _event.data.fd = _socket;
-    _event.data.ptr = this;
-    _logger = logger;
-}
-
-// See Connection.h
-void Connection::OnError() {
-    _isAlive = false;
-}
-
-// See Connection.h
-void Connection::OnClose() {
-    _isAlive = false;
-}
-
-// See Connection.h
-void Connection::DoRead() {
-    try {
-        int readed_bytes_new = -1;
-        while ((readed_bytes_new = read(_socket, client_buffer + readed_bytes, sizeof(client_buffer) - readed_bytes)) > 0) {
-            readed_bytes += readed_bytes_new;
-            while (readed_bytes > 0) {
-                // There is no command yet
-                if (!command_to_execute) {
-                    std::size_t parsed = 0;
-                    if (parser.Parse(client_buffer, readed_bytes, parsed)) {
-                        // There is no command to be launched, continue to parse input stream
-                        // Here we are, current chunk finished some command, process it
-                        command_to_execute = parser.Build(arg_remains);
-                        if (arg_remains > 0) {
-                            arg_remains += 2;
-                        }
-                    }
-
-                    // Parsed might fails to consume any bytes from input stream. In real life that could happens,
-                    // for example, because we are working with UTF-16 chars and only 1 byte left in stream
-                    if (parsed == 0) {
-                        break;
-                    } else {
-                        std::memmove(client_buffer, client_buffer + parsed, readed_bytes - parsed);
-                        readed_bytes -= parsed;
-                    }
-                }
-
-                // There is command, but we still wait for argument to arrive...
-                if (command_to_execute && arg_remains > 0) {
-                    // There is some parsed command, and now we are reading argument
-                    std::size_t to_read = std::min(arg_remains, std::size_t(readed_bytes));
-                    argument_for_command.append(client_buffer, to_read);
-
-                    std::memmove(client_buffer, client_buffer + to_read, readed_bytes - to_read);
-                    arg_remains -= to_read;
-                    readed_bytes -= to_read;
-                }
-
-                // There is command & argument - RUN!
-                if (command_to_execute && arg_remains == 0) {
-                    std::string result;
-                    command_to_execute->Execute(*pStorage, argument_for_command, result);
-                    result += "\r\n";
-
-                    // Save response
-                    _answers.push_back(result);
-
-                    _event.events = mask_read_write;
-
-                    // Prepare for the next command
-                    command_to_execute.reset();
-                    argument_for_command.resize(0);
-                    parser.Reset();
-                }
-            } // while (readed_bytes)
+        // See Connection.h
+        void Connection::Start(std::shared_ptr<spdlog::logger> logger)
+        {
+            _event.events = mask_read;
+            _event.data.fd = _socket;
+            _event.data.ptr = this;
+            _logger = logger;
+            _answers.clear();
+            command_to_execute = nullptr;
+            argument_for_command.clear();
         }
-    } catch (std::runtime_error &ex) {
-        _logger->error("Failed to process connection on descriptor {} : {}", _socket, ex.what());
-    }
-}
 
-void Connection::DoWrite() {
-    int amount = _answers.size();
-    if (amount <= 0) {
-        return;
-    }
+        // See Connection.h
+        void Connection::OnError()
+        {
+            _isAlive = false;
+            shutdown(_socket, SHUT_RDWR);
+        }
 
-    struct iovec iovecs[amount];
-    for (int i = 0; i < amount; i++) {
-        iovecs[i].iov_len = _answers[i].size();
-        iovecs[i].iov_base = &(_answers[i][0]);
-    }
-    iovecs[0].iov_base = static_cast<char*>(iovecs[0].iov_base) + _position;
+        // See Connection.h
+        void Connection::OnClose()
+        {
+            _isAlive = false;
+            shutdown(_socket, SHUT_RDWR);
+        }
 
-    assert(iovecs[0].iov_len > _position);
-    iovecs[0].iov_len -= _position;
+        // See Connection.h
+        void Connection::DoRead()
+        {
+            try {
+                int readed_bytes_new = -1;
+                while ((readed_bytes_new = read(_socket, client_buffer + readed_bytes, sizeof(client_buffer) - readed_bytes)) > 0) {
+                    readed_bytes += readed_bytes_new;
+                    while (readed_bytes > 0) {
+                        // There is no command yet
+                        if (!command_to_execute) {
+                            std::size_t parsed = 0;
+                            if (parser.Parse(client_buffer, readed_bytes, parsed)) {
+                                // There is no command to be launched, continue to parse input stream
+                                // Here we are, current chunk finished some command, process it
+                                command_to_execute = parser.Build(arg_remains);
+                                if (arg_remains > 0) {
+                                    arg_remains += 2;
+                                }
+                            }
 
-    int written;
-    if ((written = writev(_socket, iovecs, _answers.size())) <= 0) {
-        _logger->error("Failed to send response");
-    }
-    _position += written;
+                            // Parsed might fails to consume any bytes from input stream. In real life that could happens,
+                            // for example, because we are working with UTF-16 chars and only 1 byte left in stream
+                            if (parsed == 0) {
+                                break;
+                            } else {
+                                std::memmove(client_buffer, client_buffer + parsed, readed_bytes - parsed);
+                                readed_bytes -= parsed;
+                            }
+                        }
 
-    int i = 0;
-    for (; i < _answers.size() && (_position - iovecs[i].iov_len) >= 0; i++) {
-        _position -= iovecs[i].iov_len;
-    }
+                        // There is command, but we still wait for argument to arrive...
+                        if (command_to_execute && arg_remains > 0) {
+                            // There is some parsed command, and now we are reading argument
+                            std::size_t to_read = std::min(arg_remains, std::size_t(readed_bytes));
+                            argument_for_command.append(client_buffer, to_read);
 
-    _answers.erase(_answers.begin(), _answers.begin() + i);
-    if (_answers.empty()) {
-        _event.events = mask_read;
-    }
-}
+                            std::memmove(client_buffer, client_buffer + to_read, readed_bytes - to_read);
+                            arg_remains -= to_read;
+                            readed_bytes -= to_read;
+                        }
 
-} // namespace STnonblock
+                        // There is command & argument - RUN!
+                        if (command_to_execute && arg_remains == 0) {
+                            std::string result;
+                            command_to_execute->Execute(*pStorage, argument_for_command, result);
+                            result += "\r\n";
+
+                            // Save response
+                            _answers.push_back(result);
+
+                            _event.events = mask_read_write;
+
+                            // Prepare for the next command
+                            command_to_execute.reset();
+                            argument_for_command.resize(0);
+                            parser.Reset();
+                        }
+                    } // while (readed_bytes)
+                }
+            } catch (std::runtime_error& ex) {
+                _logger->error("Failed to process connection on descriptor {} : {}", _socket, ex.what());
+            }
+        }
+
+        void Connection::DoWrite()
+        {
+            int amount = _answers.size();
+            if (amount <= 0) {
+                return;
+            }
+
+            struct iovec iovecs[amount];
+            for (int i = 0; i < amount; i++) {
+                iovecs[i].iov_len = _answers[i].size();
+                iovecs[i].iov_base = &(_answers[i][0]);
+            }
+
+            iovecs[0].iov_base = static_cast<char*>(iovecs[0].iov_base) + _position;
+            assert(iovecs[0].iov_len > _position);
+            iovecs[0].iov_len -= _position;
+
+            int written;
+            if ((written = writev(_socket, iovecs, _answers.size())) <= 0) {
+                OnClose();
+            }
+            _position += written;
+
+            int i = 0;
+            for (; i < _answers.size() && (_position - iovecs[i].iov_len) >= 0; ++i) {
+                _position -= iovecs[i].iov_len;
+            }
+
+            _answers.erase(_answers.begin(), _answers.begin() + i);
+            if (_answers.empty()) {
+                _event.events = mask_read;
+            }
+        }
+
+    } // namespace STnonblock
 } // namespace Network
 } // namespace Afina
