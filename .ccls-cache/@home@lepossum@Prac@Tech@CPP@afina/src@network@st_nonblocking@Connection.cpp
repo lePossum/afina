@@ -67,7 +67,7 @@ void Connection::DoRead() {
                     readed_bytes -= to_read;
                 }
 
-                // Thre is command & argument - RUN!
+                // There is command & argument - RUN!
                 if (command_to_execute && arg_remains == 0) {
                     std::string result;
                     command_to_execute->Execute(*pStorage, argument_for_command, result);
@@ -91,8 +91,13 @@ void Connection::DoRead() {
 }
 
 void Connection::DoWrite() {
-    struct iovec iovecs[_answers.size()];
-    for (int i = 0; i < _answers.size(); i++) {
+    int amount = _answers.size();
+    if (amount <= 0) {
+        return;
+    }
+
+    struct iovec iovecs[amount];
+    for (int i = 0; i < amount; i++) {
         iovecs[i].iov_len = _answers[i].size();
         iovecs[i].iov_base = &(_answers[i][0]);
     }

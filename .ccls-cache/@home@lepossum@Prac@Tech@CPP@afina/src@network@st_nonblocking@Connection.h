@@ -58,7 +58,7 @@ private:
 
     int readed_bytes = 0;
     char client_buffer[4096];
-    char write_buffer[4096];
+    // char write_buffer[4096];
 
     std::vector<std::string> _answers;
     int _position = 0;
