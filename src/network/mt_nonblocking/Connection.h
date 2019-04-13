@@ -1,21 +1,20 @@
 #ifndef AFINA_NETWORK_MT_NONBLOCKING_CONNECTION_H
 #define AFINA_NETWORK_MT_NONBLOCKING_CONNECTION_H
 
-
+#include <atomic>
 #include <cstring>
 #include <iostream>
-#include <vector>
+#include <mutex>
 #include <string>
 #include <sys/uio.h>
-#include <mutex>
-#include <atomic>
+#include <vector>
 
-#include <sys/socket.h>
-#include <sys/epoll.h>
-#include <afina/execute/Command.h>
-#include <afina/Storage.h>
 #include "protocol/Parser.h"
+#include <afina/Storage.h>
+#include <afina/execute/Command.h>
 #include <spdlog/logger.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 
 namespace spdlog {
 class logger;

@@ -208,7 +208,7 @@ void ServerImpl::OnRun() {
                 // Register connection in worker's epoll
                 pc->Start(_logger);
                 if (pc->isAlive()) {
-                   // pc->_event.events |= EPOLLONESHOT;
+                    // pc->_event.events |= EPOLLONESHOT;
                     if (epoll_ctl(_data_epoll_fd, EPOLL_CTL_ADD, pc->_socket, &pc->_event)) {
                         _logger->error("Can't register connection in worker's epoll");
                         pc->OnError();

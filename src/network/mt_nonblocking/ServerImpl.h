@@ -1,9 +1,9 @@
 #ifndef AFINA_NETWORK_MT_NONBLOCKING_SERVER_H
 #define AFINA_NETWORK_MT_NONBLOCKING_SERVER_H
 
+#include <set>
 #include <thread>
 #include <vector>
-#include <set>
 
 #include "Connection.h"
 #include <afina/network/Server.h>

@@ -32,7 +32,8 @@ void Connection::DoRead() {
     auto tmp = _sync_read.load();
     try {
         int readed_bytes_new = -1;
-        while ((readed_bytes_new = read(_socket, client_buffer + readed_bytes, sizeof(client_buffer) - readed_bytes)) > 0) {
+        while ((readed_bytes_new = read(_socket, client_buffer + readed_bytes, sizeof(client_buffer) - readed_bytes)) >
+               0) {
             readed_bytes += readed_bytes_new;
             while (readed_bytes > 0) {
                 // There is no command yet
@@ -107,7 +108,7 @@ void Connection::DoWrite() {
             iovecs[i].iov_base = &(_answers[i][0]);
         }
     }
-    iovecs[0].iov_base = static_cast<char*>(iovecs[0].iov_base) + _position;
+    iovecs[0].iov_base = static_cast<char *>(iovecs[0].iov_base) + _position;
 
     assert(iovecs[0].iov_len > _position);
     iovecs[0].iov_len -= _position;
