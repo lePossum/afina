@@ -79,10 +79,12 @@ void Connection::DoRead() {
                     command_to_execute->Execute(*pStorage, argument_for_command, result);
                     result += "\r\n";
 
+                    if (_answers.size() == 0) {
+                        _event.events = mask_read_write;
+                    }
                     // Save response
                     _answers.push_back(result);
 
-                    _event.events = mask_read_write;
 
                     // Prepare for the next command
                     command_to_execute.reset();
