@@ -3,11 +3,11 @@
 
 namespace Afina {
 namespace Network {
-    namespace STnonblock {
+namespace STnonblock {
 
-        void make_socket_non_blocking(int sfd);
+void make_socket_non_blocking(int sfd);
 
-    } // namespace STnonblock
+} // namespace STnonblock
 } // namespace Network
 } // namespace Afina
 
