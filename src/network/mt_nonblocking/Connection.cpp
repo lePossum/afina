@@ -9,7 +9,7 @@ namespace MTnonblock {
 // See Connection.h
 void Connection::Start(std::shared_ptr<spdlog::logger> logger) {
     _event.events = mask_read;
-    _event.data.fd = _socket;
+    // _event.data.fd = _socket;
     _event.data.ptr = this;
     _logger = logger;
     _sync_read.store(true);
@@ -121,6 +121,7 @@ void Connection::DoWrite() {
 
     int i = 0;
     for (; i < ans_size && (_position - iovecs[i].iov_len) >= 0; i++) {
+        assert(_position >= iovecs[i].iov_len);
         _position -= iovecs[i].iov_len;
     }
 
