@@ -29,7 +29,7 @@ void Connection::OnClose() {
 
 // See Connection.h
 void Connection::DoRead() {
-    auto tmp = _sync_read.load();
+    std::lock_guard<std::mutex> _lock(_mutex);
     try {
         int readed_bytes_new = -1;
         while ((readed_bytes_new = read(_socket, client_buffer + readed_bytes, sizeof(client_buffer) - readed_bytes)) >
@@ -77,7 +77,7 @@ void Connection::DoRead() {
 
                     // Save response
                     {
-                        std::lock_guard<std::mutex> lock(_mutex);
+                        // std::lock_guard<std::mutex> lock(_mutex);
                         _answers.push_back(result);
                         _event.events = mask_read_write;
                     }
@@ -92,7 +92,6 @@ void Connection::DoRead() {
     } catch (std::runtime_error &ex) {
         _logger->error("Failed to process connection on descriptor {} : {}", _socket, ex.what());
     }
-    _sync_read.store(true);
 }
 
 // See Connection.h
@@ -100,7 +99,7 @@ void Connection::DoWrite() {
     struct iovec *iovecs;
     std::size_t ans_size;
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> _lock(_mutex);
         ans_size = _answers.size();
         iovecs = new struct iovec[ans_size];
         for (int i = 0; i < _answers.size(); i++) {

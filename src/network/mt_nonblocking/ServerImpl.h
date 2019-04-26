@@ -52,7 +52,7 @@ private:
     // Socket to accept new connection on, shared between acceptors
     int _server_socket;
 
-    // Threads that accepts new connections, each has private epoll instance
+    // Threads that accept new connections, each has private epoll instance
     // but share global server socket
     std::vector<std::thread> _acceptors;
 
