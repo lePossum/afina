@@ -3,6 +3,7 @@
 #include <setjmp.h>
 #include <stdio.h>
 #include <string.h>
+#include <cstddef>
 
 namespace Afina {
 namespace Coroutine {
@@ -18,12 +19,14 @@ void Engine::Store(context &ctx) {
 
     char *&buffer = std::get<0>(ctx.Stack);
     uint32_t &av_size = std::get<1>(ctx.Stack);
-    auto size = ctx.Hight - ctx.Low;
+    std::ptrdiff_t size = ctx.Hight - ctx.Low;
 
-    if (av_size < size) {
-        delete[] buffer;
-        buffer = new char[size];
+    if ((av_size < size) || ((av_size << 2 ) > size )) {
+        if (buffer) {
+            delete[] buffer;
+        }
         av_size = size;
+        buffer = new char[size];
     }
 
     memcpy(buffer, ctx.Low, size);
@@ -36,7 +39,7 @@ void Engine::Restore(context &ctx) {
     }
 
     char *&buffer = std::get<0>(ctx.Stack);
-    auto size = ctx.Hight - ctx.Low;
+    std::ptrdiff_t size = ctx.Hight - ctx.Low;
 
     memcpy(ctx.Low, buffer, size);
     longjmp(ctx.Environment, 1);
